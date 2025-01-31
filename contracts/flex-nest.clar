@@ -1,12 +1,13 @@
 ;; FlexNest Contract
 
-;; Constants
+;; Constants  
 (define-constant contract-owner tx-sender)
 (define-constant err-owner-only (err u100))
 (define-constant err-invalid-plan (err u101))
 (define-constant err-already-subscribed (err u102))
 (define-constant err-not-subscribed (err u103))
 (define-constant err-already-paused (err u104))
+(define-constant err-not-paused (err u105))
 
 ;; Data Variables
 (define-map subscription-plans
@@ -71,6 +72,23 @@
     (ok (map-set subscriptions
       { subscriber: tx-sender, plan-id: plan-id }
       (merge sub { paused: true, pause-block: block-height })
+    ))
+  )
+)
+
+(define-public (resume-subscription (plan-id uint))
+  (let (
+    (sub (unwrap! (map-get? subscriptions { subscriber: tx-sender, plan-id: plan-id }) err-not-subscribed))
+  )
+    (asserts! (get paused sub) err-not-paused)
+    (ok (map-set subscriptions
+      { subscriber: tx-sender, plan-id: plan-id }
+      (merge sub 
+        { 
+          paused: false,
+          end-block: (+ (get end-block sub) (- block-height (get pause-block sub)))
+        }
+      )
     ))
   )
 )
